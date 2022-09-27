@@ -73,12 +73,15 @@
 
 # TF: “travel” appears 10 times out of 200 words = 5%
 
-# IDF: log(#documents/(#documents where word appears)): “travel” appears in every article! = log(1) = 0
+# IDF: log(#documents/(#documents where word appears)): “travel” appears in almost every article! = log(1.03) = 0.012
 
 # This metric tries to measure whether that word (e.g. “travel”) is a relevant word to classify on
 
-# If “travel” was in every document, TF*IDF = 5% * 0 = 0 => “travel” isn’t informative
+# If “travel” was in almost every document, TF*IDF = 5% * 1.2% = 0.0005 => “travel” isn’t informative
 
-# This is analogous to removing “stop words” after “tokenizing text”
+# This is analogous to removing “stop words” such as "the" since they aren't
+# It's almost like a hash tag list
 
 # TF-IDF number can be used to adjust the “travel” index in the term_freq_vector
+
+# You could use PCA to reduce the dimension of the vocubulary

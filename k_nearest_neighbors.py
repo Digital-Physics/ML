@@ -39,6 +39,8 @@ def find_k_nearest_neighbors(examples: dict, features: list[float], k: int) -> l
 
             if new_closest_flag:
                 closest = new_closest[:]
+            elif len(closest) < k:
+                closest.append((key, dist))
 
     return [closest[i][0] for i in range(k)]
 
@@ -54,7 +56,7 @@ my_examples = {
         "is_intrusive": 0},
     "pid_1": {
         "features": [1.73, 2.8343, 2.234343],
-        "is_intrusive": 1},
+        "is_intrusive": 0},
     "pid_3": {
         "features": [2.32323, 3.323343, 1.234343],
         "is_intrusive": 1},
@@ -63,4 +65,4 @@ my_examples = {
         "is_intrusive": 1}}
 
 
-print(predict_label(my_examples, [1.2, 2.345, 2.23], 3))
+print(predict_label(my_examples, [2.2, 3.345, 4.23], 3))
