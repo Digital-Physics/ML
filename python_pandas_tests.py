@@ -47,4 +47,15 @@ for col_name in df.columns:
     print(df[col_name].value_counts())
     print(type(df[col_name].value_counts()))
 
+print("sort_values a dataframe based on , but not in 'ascending' order")
+df_sorted = df.sort_values(["col_2", "age"], ascending=False)
+print(df_sorted)
+
+print("what if we want to do joins between two dataframes like between two tables in SQL")
+print("let's use .merge with how=left")
+df_out = pd.merge(df, df_sorted[df_sorted["name"] == "alice"]["name"], how="left")
+print(df_out)
+
+print("what about .join?")
+
 print("explore pandas .transform")

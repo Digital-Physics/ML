@@ -1,4 +1,4 @@
-from __future__ import annotations
+# from __future__ import annotations
 print("Some of this code is specific to a certain data structure as shown in the my_examples dictionary")
 print("In general, we need a distance metric that can handle continuous & categorical (including ordinal and boolean) data")
 
