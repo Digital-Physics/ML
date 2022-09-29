@@ -4,17 +4,30 @@ import math
 
 class Neuron:
     """training and prediction methods for a neuron w/ a sigmoid activation and a logistic loss function.
+    L(y, y_hat) = -(y*log(y_hat) + (1-y)*log(1-y_hat))
+    Note: y = {0,1} => only one term in the loss will be non-zero (per example)
     AKA logistic regression"""
 
     def __init__(self, examples: list[dict]) -> None:
-        self.weights = np.random.normal(0, 1, 3 + 1)  # add bias to three feature inputs in x
+        # generate 4 random numbers from a standard normal distribution
+        # add an extra weight for the bias term, on top of the three feature inputs
+        self.weights = np.random.normal(0, 1, 3 + 1)
         self.examples = examples
         self.train()
 
     def train(self, learning_rate: float = 0.01, batch_size: int = 10, epochs: int = 200) -> None:
         """mini-batch gradient descent, with no regularization.
-         uses a sigmoid activation. assumes data has been normalized.
-         derivation of gradient: https://youtu.be/z_xiwjEdAC4"""
+         uses a sigmoid activation. assumes data has been normalized already.
+         partial derivation of gradient via chain rule from calculus: https://youtu.be/z_xiwjEdAC4
+         the gradient for weight 1:
+         dL/dw_1 = (dL/dy_hat)*(dy_hat/dz)*(dz/dw_1)
+         = (-y/y_hat + (1-y)/(1-y_hat))*(y_hat*(1-y_hat))*(x_1)
+         = (y_hat - y)x_1
+         where
+         dy_hat/d_z = (1 + exp(-z))**(-2) * exp(-z) = y_hat*(1-y_hat)
+         and
+         y_hat = 1 / (1 + exp(-z))
+         """
         for _ in range(epochs):
             for mini_batch_start in range(len(self.examples) // batch_size):
                 mini_batch_sum_of_errors = np.zeros(len(self.weights))
@@ -27,7 +40,7 @@ class Neuron:
                 self.weights -= learning_rate * gradients
 
     def predict(self, features: list[float]) -> float:
-        """returns probability of yes"""
+        """returns a value between 0 and 1, sometimes interpreted as the probability of yes classification"""
         z = np.sum(np.array(features + [1]) * self.weights)  # + self.bias
         y_hat = 1 / (1 + math.exp(-z))
         return y_hat
