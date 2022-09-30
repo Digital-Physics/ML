@@ -28,7 +28,7 @@ def minkowski_distance(v_1, v_2, d):
 
 
 def chebyshev_distance(v_1, v_2):
-    """the max component distance; also equal to the minkowski with d=inf! hmmmm
+    """the max component distance; also equal to the minkowski with d=inf!?!
     think of a crane in a warehouse that moves on x, y, and z axes at the same rate"""
     return max(abs(v1_i - v2_i) for v1_i, v2_i in zip(v_1, v_2))
 
@@ -49,6 +49,7 @@ def cosine_similarity(v_1, v_2):
     dot product of vectors/product of vector lengths"""
     dot_product = np.sum(np.array(v_1)*np.array(v_2))
     assert dot_product == np.dot(np.array(v_1), np.array(v_2))
+    assert dot_product == np.matmul(np.array(v_1), np.array(v_2))
     v1_length = euclidean_distance(v_1, [0]*len(v_1))
     v2_length = euclidean_distance(v_2, [0]*len(v_2))
     return dot_product/(v1_length*v2_length)

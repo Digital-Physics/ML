@@ -146,7 +146,7 @@ class MultinomialNB:
     def predict(self, flower_x: list[str]) -> dict:
         """Use Naive Bayes' p(y|X = X_1, X_2, ... X_n) = p(X|y)*p(y)/p(X)
         = p(X_1|y)*p(X_2|y)*...p(X_n|y)*p(y)/p(X)"""
-        likelihoods = {}
+        loglikelihoods = {}
 
         for label in self.labels:
             # we can take the log of the probabilities (and add instead of multiply) because the log is convex
@@ -161,17 +161,11 @@ class MultinomialNB:
                 else:
                     numerator += math.log(0.5)
 
-            likelihoods[label] = numerator
+            loglikelihoods[label] = numerator
 
-        print("posterior likelihoods before normalizing to sum to 1")
-        print(likelihoods)
-        norm_divisor = sum(likelihoods.values())
-        for label_key in likelihoods.keys():
-            likelihoods[label_key] = likelihoods[label_key]/norm_divisor
-
-        print("after weighting likelihoods to sum to 1")
-        print(likelihoods)
-        return likelihoods
+        print("posterior log-likelihoods before normalizing to sum to 1")
+        print(loglikelihoods)
+        return loglikelihoods
 
 
 model = MultinomialNB(discrete_Xy_train)

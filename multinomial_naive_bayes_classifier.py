@@ -1,29 +1,31 @@
-import pandas as pd
-from collections import defaultdict
+import math
 
 print("we are going to make a Naive Bayes classifier")
 print("we are making a multinomial model because the conditional probabilities p(x|y)=0.5 have multiple values")
-print("note: we are only choosing one possible bucket/tag per example")
-print("we will avoid 0 probabilities by using Laplace smoothing)")
-print("on the 'naive' aspects of 'Naive Bayes':")
+print("note: we are only choosing one possible bucket/tag per article/example (so more of a categorization than a 'tagging')")
+print("we will avoid 0 conditional likelihoods using Laplace smoothing")
+print("on the 'naive' aspects of 'Naive Bayes'...")
 print("it may be 'naive' to assume all inputs in your data are independent of each other, but it's a simplifying assumption...")
 print("that allows joint probabilities to be created by simply multiplying conditional (and prior) probabilities together...")
+print("or in the case that we look at log probabilities, we can simply add the log(probs) together...")
 print("essentially, the presence or absence of a word is considered independent of all the other words in the article")
 print("if we didn't do this, the conditional probability of a word vector given an outcome p(x|y) would be expensive to calculate...")
 print("the trade-off: the word 'arena' and 'political' are treated separately (and implicitly the phrase 'political arena' is ignored)")
+print("we could go from 1-grams to 2-grams to capture two word phrases in our atomic representation of the article")
 print("so our naive model might classify an article with 'political arena' phrase as 'sports' and not 'politics'")
 print("if we didn't make this assumption, you would have to look at the conditional chain rule of probabilities")
 print("this would involve conditionally taking into account each other word in the vocabulary word vector (w/ or w/o a notion of order)")
 print("another point: it may also be 'naive' to implicitly treat all of our inputs the same, and not weight feature importance")
-print("Note: We won't use TF-IDF (Term Frequency * Inverse Document Frequency) when generating our training data feature vectors")
-print("TF-IDF might help create feature vectors w/ salient words given higher weights, but we want empirical word probs for Bayes, I think")
+print("in addition, Naive Bayes may be good at classifying (via argmax(prob)), but take their probabilities with a grain of salt")
+print("Note: We won't use TF-IDF (Term Frequency * Inverse Document Frequency) when creating our training word freq vectors (or dict)")
+print("TF-IDF might help create feature vectors w/ salient words given higher weights, but we want empirical word probs for Naive Bayes")
 
 
 class MultinomialNB:
     def __init__(self, articles_per_tag: dict) -> None:
+        """Naive Bayes classifier"""
         self.articles_per_tag = articles_per_tag
         self.labels = self.articles_per_tag.keys()
-        # self.features = self.vocab.keys()
         self.label_counts = {label: len(self.articles_per_tag[label]) for label in self.articles_per_tag.keys()}
         self.prior_prob_y = {}
         self.cond_prob_X_given_y = {}
@@ -53,13 +55,16 @@ class MultinomialNB:
         self.prior_prob_y = {label: len(self.articles_per_tag[label])/sum(self.label_counts.values()) for label in self.labels}
 
     def create_conditional_prob_dict(self) -> None:
-        """create a 3-layer nested dictionary to hold our conditional probabilities e.g. p(x_7="theory"|y="science")
-        print("{feature_col: feature_vals: label_vals: conditional_prob}")
-        in the case of words in many articles under one label, aggregate the words and treat like one article."""
+        """create a 2-layer nested dictionary (label_val: word: conditional_prob) to hold
+        our conditional probabilities e.g. p(X_7 = "theory"|y="science").
+        We aggregate the words across all articles under each label and treat it like one big article.
+        Note: we are using a dictionary/list of words as input, not a vocab vector of all words.
+        For example, in a 'identify spam' use case, we could use a TF*IDF (salient) word vector as its feature inputs."""
         self.cond_prob_X_given_y = {}
 
         for label in self.labels:
             counter_dict = {}
+            self.cond_prob_X_given_y[label] = {}
             for article in self.articles_per_tag[label]:
                 for word in article:
                     if word in counter_dict:
@@ -67,58 +72,42 @@ class MultinomialNB:
                     else:
                         counter_dict[word] = 1
 
-        total_words = sum(counter_dict.values())
+            total_words = sum(counter_dict.values())
 
-        for word in self.features_vocab:
-            self.cond_prob_X_given_y[]
-
-
-        # for word in self.features_vocab:
-        #     temp_dict = {}
-        #     for cat in self.data[feature].unique():
-        #         temp_dict2 = {}
-        #         for label in self.labels:
-        #             # Laplace smoothing adds 1 to numerator and 2 to denominator
-        #             numerator_cat_occurences = len(
-        #                 discrete_Xy_train[(discrete_Xy_train[feature] == cat) & (discrete_Xy_train["y"] == label)]) + 1
-        #             denominator_total_label = len(discrete_Xy_train[discrete_Xy_train["y"] == label]) + 2
-        #             temp_dict2[label] = numerator_cat_occurences / denominator_total_label
-        #         temp_dict[cat] = temp_dict2
-        #     self.cond_prob_X_given_y[feature] = temp_dict
-        # print("cond prob X given y (feature_col: feature_vals: label_vals: conditional_prob):")
-        # print(self.cond_prob_X_given_y)
+            # Laplace smoothing adds 1 to numerator and 2 to the denominator
+            # Now we won't have 0 probabilities even when we didn't see a word in any articles under a given category/tab/label
+            for word in self.features_vocab:
+                self.cond_prob_X_given_y[label][word] = (counter_dict.get(word, 0) + 1)/(total_words + 2)
 
     def predict(self, article: list[str]) -> float:
         """Use Naive Bayes' p(y|X = X_1, X_2, ... X_n) = p(X|y)*p(y)/p(X)
-                = p(X_1|y)*p(X_2|y)*...p(X_n|y)*p(y)/p(X)"""
-        likelihoods = {}
+        = p(X_1|y)*p(X_2|y)*...p(X_n|y)*p(y)/p(X)
+        we are essentially raising conditional likelihoods to powers based on word count,
+        which is a little different than word vector, Bernoulli Naive Bayes which
+        multiplies a conditional prob for each word in the entire vocabulary
+        in another sense, you do use the entire vocab vector, but unseen words have their
+        conditional prob raised to exponent of 0 => prob=1 => so no effect to skip (hence, use dictionary)"""
+        loglikelihoods = {}
 
         for label in self.labels:
-            # we can take the log of the probabilities (and add instead of multiply) because the log is convex
+            # we can take the log of the probabilities (and add instead of multiply them together) because the log is convex
             # the highest probability will now have the least negative number, and therefore argmax will still make the same label choice
             # this will help prevent us from losing significant digits, which can happen when multiplying many numbers < 0 together
             numerator = math.log(self.prior_prob_y[label])
             # since the denominator is constant p(X) across all posteriors, we can ignore it. we'll scale probs to sum to 1.
-            for feat_col, x_input in zip(self.features, article):
-                if x_input in self.cond_prob_X_given_y[feat_col]:
-                    # += log(probs) instead of *= probs
-                    numerator += math.log(self.cond_prob_X_given_y[feat_col][x_input][label])
+            for word in article:
+                # seen = {}
+                if word in self.cond_prob_X_given_y[label]:
+                    numerator += math.log(self.cond_prob_X_given_y[label][word])
+                    # seen[word] = True
                 else:
                     numerator += math.log(0.5)
 
-            likelihoods[label] = numerator
+            loglikelihoods[label] = numerator
 
-        print("posterior likelihoods before normalizing to sum to 1")
-        print(likelihoods)
-        norm_divisor = sum(likelihoods.values())
-        for label_key in likelihoods.keys():
-            likelihoods[label_key] = likelihoods[label_key] / norm_divisor
-
-        print("after weighting likelihoods to sum to 1")
-        print(likelihoods)
-        return likelihoods
-
-
+        print("posterior log likelihoods before normalizing to sum to 1")
+        print(loglikelihoods)
+        return loglikelihoods
 
 
 # is there a better way to get the dictionary to not paste all on one line in PyCharm? (or another IDE)
@@ -1043,4 +1032,7 @@ data = {
     ],
 }
 
-print(data.keys())
+model = MultinomialNB(data)
+model.predict(['article', 'writes', 'while', 'when', 'owned', 'Plus', 'wanted', 'upgrade', 'memory', 'just',
+                'ordered', 'toolkit', 'from', 'Macwarehouse', 'something', 'like', 'included', 'antistatic'])
+model.predict(['Went', 'Dodgers', 'game', 'tonight', 'night', 'Astacio', 'pitched'])
