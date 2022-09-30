@@ -4,10 +4,13 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn import metrics
 import numpy as np
 import pandas as pd
+import math
 
 print("we are going to go with the Gaussian (for continuous input data) version of a Naive Bayes classifier")
+print("look into kernel density estimates... for estimating the pdf of functions based on local data")
+print("if our inputs were 0/1 we'd do a BernoulliNB and if we had n-categorical inputs we could use a MultinomialNB classifier")
 print("we will first work with continuous inputs using sklearn.naive_bayes.GaussianNB")
-print("we will then make a function that does Naive Bayes for discrete probabilities from scratch (using Laplace smoothing? nah)")
+print("we will then make a function that does Naive Bayes for discrete probabilities from scratch (using Laplace smoothing?)")
 print("it may be 'naive' to assume all inputs in your data are independent of each other, but it's a simplifying assumption...")
 print("that allows joint probabilities to be created by simply multiplying different (conditional and prior) probabilities together...")
 print("it may also be 'naive' to implicitly treat all of our inputs the same, and not weight feature importance")
@@ -98,49 +101,14 @@ test_example_conditional_prob = []  # conditioned on being in one of the categor
 discrete_Xy_train = pd.DataFrame(discrete_X_train)
 discrete_Xy_train["y"] = y_train
 
-# print()
-# print("calculate prior probabilities for .unique() y labels (before we see a feature vector X)")
-# print("labels: ('setosa', 'versicolor', 'virginica') = (0, 1, 2)")
-# labels = discrete_Xy_train["y"].unique()
-# print(labels)
-
-
-
-# print("create a 3-layer nested dictionary to hold our conditional probabilities e.g. p(x_i=5|y=2)")
-# print("{feature_col: feature_vals: label_vals: conditional_prob}")
-# cond_probs = {}
-# for feature in discrete_Xy_train.columns:
-#     print(feature, type(feature))
-#     temp_dict = {}
-#     for cat in discrete_Xy_train[feature].unique():
-#         temp_dict2 = {}
-#         for label in discrete_Xy_train["y"].unique():
-#             # Laplace smoothing adds 1 to numerator and 2 to denominator
-#             numerator_cat_occurences = len(discrete_Xy_train[(discrete_Xy_train[feature] == cat) & (discrete_Xy_train["y"] == label)]) + 1
-#             denominator_total_label = len(discrete_Xy_train[discrete_Xy_train["y"] == label]) + 2
-#             temp_dict2[label] = numerator_cat_occurences / denominator_total_label
-#         temp_dict[cat] = temp_dict2
-#     cond_probs[feature] = temp_dict
-#
-# print(cond_probs)
-
-
-
-
-# print("shape", np.array(test_example).shape)
-# np_array_test_example = np.array(test_example).reshape(1, -1)
-# print("reshape", np_array_test_example.shape)
-# print("prediction y = argmax_y(prediction_distribution)")
-# predict_proba = gnb.predict_proba(np_array_test_example)
-#
-# print("conditional probabilities based on labels")
-# print(predict_proba)
-
 
 class MultinomialNB:
     def __init__(self, data: pd.DataFrame) -> None:
         self.data = data
+        print("self.data", self.data)
         self.labels = self.data["y"].unique()
+        self.features = self.data.drop(["y"], axis=1).columns
+        print("self.feature", self.features)
         self.prior_prob_y = None
         self.cond_prob_X_given_y = None
         self.train()
@@ -160,7 +128,7 @@ class MultinomialNB:
         print("create a 3-layer nested dictionary to hold our conditional probabilities e.g. p(x_i=5|y=2)")
         print("{feature_col: feature_vals: label_vals: conditional_prob}")
         self.cond_prob_X_given_y = {}
-        for feature in self.data.columns:
+        for feature in self.features:
             temp_dict = {}
             for cat in self.data[feature].unique():
                 temp_dict2 = {}
@@ -172,27 +140,36 @@ class MultinomialNB:
                     temp_dict2[label] = numerator_cat_occurences / denominator_total_label
                 temp_dict[cat] = temp_dict2
             self.cond_prob_X_given_y[feature] = temp_dict
+        print("cond prob X given y (feature_col: feature_vals: label_vals: conditional_prob):")
+        print(self.cond_prob_X_given_y)
 
-    def predict(self, flower_features: list[str]) -> dict:
-        """Use Naive Bayes' p(y|X = X_1, X_2, ... X_n) = p(X|y)*p(y)/p(X)"""
+    def predict(self, flower_x: list[str]) -> dict:
+        """Use Naive Bayes' p(y|X = X_1, X_2, ... X_n) = p(X|y)*p(y)/p(X)
+        = p(X_1|y)*p(X_2|y)*...p(X_n|y)*p(y)/p(X)"""
         likelihoods = {}
 
         for label in self.labels:
-            numerator = self.prior_prob_y[label]
-            denominator = 0
-            for feature in flower_features:
-                if feature in self.cond_prob_X_given_y[feature]:
-                    numerator *= self.cond_prob_X_given_y[feature]
+            # we can take the log of the probabilities (and add instead of multiply) because the log is convex
+            # the highest probability will now have the least negative number, and therefore argmax will still make the same label choice
+            # this will help prevent us from losing significant digits, which can happen when multiplying many numbers < 0 together
+            numerator = math.log(self.prior_prob_y[label])
+            # denominator = 0 # since the denominator is constant p(X) across all posteriors, we can ignore it. can scale to sum to 1.
+            for feat_col, x_input in zip(self.features, flower_x):
+                if x_input in self.cond_prob_X_given_y[feat_col]:
+                    # += log(probs) instead of *= probs
+                    numerator += math.log(self.cond_prob_X_given_y[feat_col][x_input][label])
                 else:
+                    numerator += math.log(0.5)
 
-                value = self.cond_prob_X_given_y.get(feature, 0.5)
-
-            denominator += numerator
             likelihoods[label] = numerator
 
+        print("posterior likelihoods before normalizing to sum to 1")
+        print(likelihoods)
+        norm_divisor = sum(likelihoods.values())
         for label_key in likelihoods.keys():
-            likelihoods[label_key] = likelihoods[label_key]/denominator
+            likelihoods[label_key] = likelihoods[label_key]/norm_divisor
 
+        print("after weighting likelihoods to sum to 1")
         print(likelihoods)
         return likelihoods
 

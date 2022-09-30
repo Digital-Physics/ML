@@ -1,9 +1,10 @@
 import pandas as pd
+from collections import defaultdict
 
 print("we are going to make a Naive Bayes classifier")
-print("we are making a multinomial model because there are three possibilities for a label (politics, sports, tech)")
+print("we are making a multinomial model because the conditional probabilities p(x|y)=0.5 have multiple values")
 print("note: we are only choosing one possible bucket/tag per example")
-print("we will make a function that does Naive Bayes for discrete probabilities from scratch (using Laplace smoothing)")
+print("we will avoid 0 probabilities by using Laplace smoothing)")
 print("on the 'naive' aspects of 'Naive Bayes':")
 print("it may be 'naive' to assume all inputs in your data are independent of each other, but it's a simplifying assumption...")
 print("that allows joint probabilities to be created by simply multiplying conditional (and prior) probabilities together...")
@@ -14,7 +15,6 @@ print("so our naive model might classify an article with 'political arena' phras
 print("if we didn't make this assumption, you would have to look at the conditional chain rule of probabilities")
 print("this would involve conditionally taking into account each other word in the vocabulary word vector (w/ or w/o a notion of order)")
 print("another point: it may also be 'naive' to implicitly treat all of our inputs the same, and not weight feature importance")
-
 print("Note: We won't use TF-IDF (Term Frequency * Inverse Document Frequency) when generating our training data feature vectors")
 print("TF-IDF might help create feature vectors w/ salient words given higher weights, but we want empirical word probs for Bayes, I think")
 
@@ -23,20 +23,102 @@ class MultinomialNB:
     def __init__(self, articles_per_tag: dict) -> None:
         self.articles_per_tag = articles_per_tag
         self.labels = self.articles_per_tag.keys()
-        print("store priors for each label in a dictionary/hash table using a 'dictionary comprehension'")
-        print("key: value = label(str): prior_probability(float)")
-        self.create_prior_prob_dict()  # for labels, p(y=j)
-        self.create_conditional_prob_dict()  # for feature values, p(X=i|y=j)    used in Bayes' formula
+        # self.features = self.vocab.keys()
+        self.label_counts = {label: len(self.articles_per_tag[label]) for label in self.articles_per_tag.keys()}
+        self.prior_prob_y = {}
+        self.cond_prob_X_given_y = {}
+        self.features_vocab = {}
         self.train()
 
     def train(self) -> None:
+        """create the probabilities will need for Bayes' Theorem calculations"""
+        self.create_vocab()
+        self.create_prior_prob_dict()  # for labels, p(y="science"), p(y="tech"), p(y="politics")
+        self.create_conditional_prob_dict()  # for feature values, p(X=i|y=j)    used in Bayes' formula
+
+    def create_vocab(self) -> None:
+        """create a set of all words across all articles"""
+        words_temp = []
+
+        for label in self.labels:
+            for article in self.articles_per_tag[label]:
+                for word in article:
+                    words_temp.append(word)
+
+        self.features_vocab = set(words_temp)
 
     def create_prior_prob_dict(self) -> None:
-        self.prior_prob_y = {label: len(Xy_train[Xy_train["y"] == label]) / len(discrete_Xy_train["y"]) for label in self.labels}
+        """store priors in a dictionary/hash table. key: value = label: prior_probability"""
+        # self.prior_prob_y = {label: len(Xy_train[Xy_train["y"] == label]) / len(discrete_Xy_train["y"]) for label in self.labels}
+        self.prior_prob_y = {label: len(self.articles_per_tag[label])/sum(self.label_counts.values()) for label in self.labels}
+
+    def create_conditional_prob_dict(self) -> None:
+        """create a 3-layer nested dictionary to hold our conditional probabilities e.g. p(x_7="theory"|y="science")
+        print("{feature_col: feature_vals: label_vals: conditional_prob}")
+        in the case of words in many articles under one label, aggregate the words and treat like one article."""
+        self.cond_prob_X_given_y = {}
+
+        for label in self.labels:
+            counter_dict = {}
+            for article in self.articles_per_tag[label]:
+                for word in article:
+                    if word in counter_dict:
+                        counter_dict[word] += 1
+                    else:
+                        counter_dict[word] = 1
+
+        total_words = sum(counter_dict.values())
+
+        for word in self.features_vocab:
+            self.cond_prob_X_given_y[]
+
+
+        # for word in self.features_vocab:
+        #     temp_dict = {}
+        #     for cat in self.data[feature].unique():
+        #         temp_dict2 = {}
+        #         for label in self.labels:
+        #             # Laplace smoothing adds 1 to numerator and 2 to denominator
+        #             numerator_cat_occurences = len(
+        #                 discrete_Xy_train[(discrete_Xy_train[feature] == cat) & (discrete_Xy_train["y"] == label)]) + 1
+        #             denominator_total_label = len(discrete_Xy_train[discrete_Xy_train["y"] == label]) + 2
+        #             temp_dict2[label] = numerator_cat_occurences / denominator_total_label
+        #         temp_dict[cat] = temp_dict2
+        #     self.cond_prob_X_given_y[feature] = temp_dict
+        # print("cond prob X given y (feature_col: feature_vals: label_vals: conditional_prob):")
+        # print(self.cond_prob_X_given_y)
 
     def predict(self, article: list[str]) -> float:
-        # Write your code here.
-        pass
+        """Use Naive Bayes' p(y|X = X_1, X_2, ... X_n) = p(X|y)*p(y)/p(X)
+                = p(X_1|y)*p(X_2|y)*...p(X_n|y)*p(y)/p(X)"""
+        likelihoods = {}
+
+        for label in self.labels:
+            # we can take the log of the probabilities (and add instead of multiply) because the log is convex
+            # the highest probability will now have the least negative number, and therefore argmax will still make the same label choice
+            # this will help prevent us from losing significant digits, which can happen when multiplying many numbers < 0 together
+            numerator = math.log(self.prior_prob_y[label])
+            # since the denominator is constant p(X) across all posteriors, we can ignore it. we'll scale probs to sum to 1.
+            for feat_col, x_input in zip(self.features, article):
+                if x_input in self.cond_prob_X_given_y[feat_col]:
+                    # += log(probs) instead of *= probs
+                    numerator += math.log(self.cond_prob_X_given_y[feat_col][x_input][label])
+                else:
+                    numerator += math.log(0.5)
+
+            likelihoods[label] = numerator
+
+        print("posterior likelihoods before normalizing to sum to 1")
+        print(likelihoods)
+        norm_divisor = sum(likelihoods.values())
+        for label_key in likelihoods.keys():
+            likelihoods[label_key] = likelihoods[label_key] / norm_divisor
+
+        print("after weighting likelihoods to sum to 1")
+        print(likelihoods)
+        return likelihoods
+
+
 
 
 # is there a better way to get the dictionary to not paste all on one line in PyCharm? (or another IDE)
