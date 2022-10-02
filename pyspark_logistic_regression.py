@@ -83,3 +83,17 @@ predict_cancellations(pyspark_df)
 # |63f84e80|                     33|                     8|                    3|                    0|
 # |cbb81ed7|                     24|                     9|                    3|                    0|
 # +--------+-----------------------+----------------------+---------------------+---------------------+
+
+
+print("some comments on logistic regression")
+print("input times a weight, add a bias, and activate with sigmoid")
+print("what can we say about the linear part of the process, before the activation. (the input times a weight, add a bias part)?")
+print("how should we think of this linear combination?")
+print("let's note that it can range from -infinity to positive infinity, (-inf, inf)")
+print("note that...")
+print("prob p range: (0, 1)")
+print("odds (p/1-p) range: (0, inf)")
+print("log(p) range: (-inf, 0)")
+print("log odds ln(p/(1-p)) range: (-inf, inf)")
+print("answer: the way to think about the pre-sigmoid activation is as the log odds")
+print("and once you put it through the sigmoid activation, you get back p")

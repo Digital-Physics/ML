@@ -1,7 +1,6 @@
 from __future__ import annotations
 import numpy as np
 
-
 v1 = [1, 2, 3, 4, 43]
 v2 = [6, 4, 2, 5, 5]
 v3 = [1, 0, 1, 1, 0, 1, 1]
@@ -11,7 +10,7 @@ v6 = ["n", 4, "bob", 5, 5]
 
 
 # def manhattan_distance(v_1: list[int], v_2: list[int]) -> int|float:
-def manhattan_distance(v_1: list[int|float], v_2: list[int|float]) -> int|float:
+def manhattan_distance(v_1: list[int | float], v_2: list[int | float]) -> int | float:
     """think street block distance"""
     return sum(abs(v1_i - v2_i) for v1_i, v2_i in zip(v_1, v_2))
 
@@ -19,12 +18,12 @@ def manhattan_distance(v_1: list[int|float], v_2: list[int|float]) -> int|float:
 # def euclidean_distance(v_1: list[int|float], v_2: list[int|float]) -> float:
 def euclidean_distance(v_1, v_2):
     """think flat geometry distance"""
-    return sum(abs(v1_i - v2_i)**2 for v1_i, v2_i in zip(v_1, v_2))**(1/2)
+    return sum(abs(v1_i - v2_i) ** 2 for v1_i, v2_i in zip(v_1, v_2)) ** (1 / 2)
 
 
 def minkowski_distance(v_1, v_2, d):
     """distance in d dimensions; a generalization of euclidean and mahnattan"""
-    return sum(abs(v1_i - v2_i)**d for v1_i, v2_i in zip(v_1, v_2))**(1/d)
+    return sum(abs(v1_i - v2_i) ** d for v1_i, v2_i in zip(v_1, v_2)) ** (1 / d)
 
 
 def chebyshev_distance(v_1, v_2):
@@ -47,12 +46,12 @@ def cosine_similarity(v_1, v_2):
     """a cosine angle between the vectors in high dimensional space.
     ranges between -1 and 1, just like Cos(angle)
     dot product of vectors/product of vector lengths"""
-    dot_product = np.sum(np.array(v_1)*np.array(v_2))
+    dot_product = np.sum(np.array(v_1) * np.array(v_2))
     assert dot_product == np.dot(np.array(v_1), np.array(v_2))
     assert dot_product == np.matmul(np.array(v_1), np.array(v_2))
-    v1_length = euclidean_distance(v_1, [0]*len(v_1))
-    v2_length = euclidean_distance(v_2, [0]*len(v_2))
-    return dot_product/(v1_length*v2_length)
+    v1_length = euclidean_distance(v_1, [0] * len(v_1))
+    v2_length = euclidean_distance(v_2, [0] * len(v_2))
+    return dot_product / (v1_length * v2_length)
 
 
 def cosine_distance(v_1, v_2):
@@ -69,7 +68,7 @@ def jaccard_similarity(s_1, s_2):
     think of how much two Venn diagram circles overlap"""
     size_intersection_of_sets = len(set(s_1).intersection(s_2))
     size_union_of_sets = len(set(s_1).union(s_2))
-    return size_intersection_of_sets/size_union_of_sets
+    return size_intersection_of_sets / size_union_of_sets
 
 
 def jaccard_distance(s_1, s_2):
@@ -91,13 +90,13 @@ def mixed_type_invented_distance(v_1, v_2):
     for i, (v1_i, v2_i) in enumerate(zip(v_1, v_2)):
         if not v1_i or not v2_i:
             diff_vector[i] = 1
-        elif isinstance(v1_i, str) :
+        elif isinstance(v1_i, str):
             if v1_i != v2_i:
                 diff_vector[i] = 1
         else:
             diff_vector[i] = v1_i - v2_i
 
-    return euclidean_distance(diff_vector, [0]*len(diff_vector))
+    return euclidean_distance(diff_vector, [0] * len(diff_vector))
 
 
 print("Manhattan distance:", manhattan_distance(v1, v2))
